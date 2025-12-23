@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="src\VolcanionPM.Domain\VolcanionPM.Domain.csproj" Type="Classic C#" />
+  <Project Path="src\VolcanionPM.Application\VolcanionPM.Application.csproj" Type="Classic C#" />
+  <Project Path="src\VolcanionPM.Infrastructure\VolcanionPM.Infrastructure.csproj" Type="Classic C#" />
+  <Project Path="src\VolcanionPM.API\VolcanionPM.API.csproj" Type="Classic C#" />
+</Solution>

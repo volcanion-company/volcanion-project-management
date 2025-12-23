@@ -1,0 +1,35 @@
+using MediatR;
+using VolcanionPM.Application.Common.Interfaces;
+using VolcanionPM.Application.Common.Models;
+
+namespace VolcanionPM.Application.Features.Issues.Commands.ChangeStatus;
+
+public class ChangeIssueStatusCommandHandler : IRequestHandler<ChangeIssueStatusCommand, Result<Unit>>
+{
+    private readonly IIssueRepository _issueRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public ChangeIssueStatusCommandHandler(
+        IIssueRepository issueRepository,
+        IUnitOfWork unitOfWork)
+    {
+        _issueRepository = issueRepository;
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task<Result<Unit>> Handle(ChangeIssueStatusCommand request, CancellationToken cancellationToken)
+    {
+        var issue = await _issueRepository.GetByIdAsync(request.Id, cancellationToken);
+
+        if (issue == null)
+        {
+            return Result<Unit>.Failure("Issue not found");
+        }
+
+        issue.ChangeStatus(request.Status, "System");
+        _issueRepository.Update(issue);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return Result<Unit>.Success(Unit.Value);
+    }
+}

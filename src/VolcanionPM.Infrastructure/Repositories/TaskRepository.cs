@@ -15,33 +15,45 @@ public class TaskRepository : Repository<ProjectTask>, ITaskRepository
     public async Task<IEnumerable<ProjectTask>> GetByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default)
     {
         return await _dbSet
+            .Include(t => t.AssignedTo)
+            .Include(t => t.Sprint)
             .Where(t => EF.Property<Guid>(t, "ProjectId") == projectId)
             .OrderByDescending(t => t.CreatedAt)
+            .AsSplitQuery()
             .ToListAsync(cancellationToken);
     }
 
     public async Task<IEnumerable<ProjectTask>> GetByAssignedUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         return await _dbSet
+            .Include(t => t.Project)
+            .Include(t => t.Sprint)
             .Where(t => t.AssignedToId == userId)
             .OrderBy(t => t.DueDate)
+            .AsSplitQuery()
             .ToListAsync(cancellationToken);
     }
 
     public async Task<IEnumerable<ProjectTask>> GetBySprintIdAsync(Guid sprintId, CancellationToken cancellationToken = default)
     {
         return await _dbSet
+            .Include(t => t.AssignedTo)
+            .Include(t => t.Project)
             .Where(t => t.SprintId == sprintId)
             .OrderBy(t => t.Priority)
             .ThenBy(t => t.CreatedAt)
+            .AsSplitQuery()
             .ToListAsync(cancellationToken);
     }
 
     public async Task<IEnumerable<ProjectTask>> GetByStatusAsync(Guid projectId, TaskStatus status, CancellationToken cancellationToken = default)
     {
         return await _dbSet
+            .Include(t => t.AssignedTo)
+            .Include(t => t.Sprint)
             .Where(t => EF.Property<Guid>(t, "ProjectId") == projectId && t.Status == status)
             .OrderBy(t => t.Priority)
+            .AsSplitQuery()
             .ToListAsync(cancellationToken);
     }
 }

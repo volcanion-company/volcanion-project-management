@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using VolcanionPM.Application.Common.Interfaces;
 using VolcanionPM.Domain.Entities;
+using VolcanionPM.Domain.ValueObjects;
 using VolcanionPM.Infrastructure.Persistence;
 
 namespace VolcanionPM.Infrastructure.Repositories;
@@ -13,8 +14,13 @@ public class UserRepository : Repository<User>, IUserRepository
 
     public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
+        // Normalize email to match Email Value Object normalization (lowercase + trim)
+        var normalizedEmail = email.ToLowerInvariant().Trim();
+        
+        // Query using Email.Value property
         return await _dbSet
-            .FirstOrDefaultAsync(u => u.Email.Value == email, cancellationToken);
+            .Where(u => u.Email.Value == normalizedEmail)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<IEnumerable<User>> GetByOrganizationIdAsync(Guid organizationId, CancellationToken cancellationToken = default)
@@ -29,7 +35,10 @@ public class UserRepository : Repository<User>, IUserRepository
 
     public async Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default)
     {
+        // Normalize email to match Email Value Object normalization (lowercase + trim)
+        var normalizedEmail = email.ToLowerInvariant().Trim();
+        
         return await _dbSet
-            .AnyAsync(u => u.Email.Value == email, cancellationToken);
+            .AnyAsync(u => u.Email.Value == normalizedEmail, cancellationToken);
     }
 }

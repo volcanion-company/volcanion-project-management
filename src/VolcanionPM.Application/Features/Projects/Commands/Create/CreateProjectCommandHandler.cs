@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using VolcanionPM.Application.Common.Interfaces;
 using VolcanionPM.Application.Common.Models;
 using VolcanionPM.Application.DTOs.Projects;
@@ -12,19 +13,28 @@ public class CreateProjectCommandHandler : IRequestHandler<CreateProjectCommand,
 {
     private readonly IProjectRepository _projectRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<CreateProjectCommandHandler> _logger;
 
-    public CreateProjectCommandHandler(IProjectRepository projectRepository, IUnitOfWork unitOfWork)
+    public CreateProjectCommandHandler(
+        IProjectRepository projectRepository, 
+        IUnitOfWork unitOfWork,
+        ILogger<CreateProjectCommandHandler> logger)
     {
         _projectRepository = projectRepository;
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<Result<ProjectDto>> Handle(CreateProjectCommand request, CancellationToken cancellationToken)
     {
+        _logger.LogInformation("Creating project with code {ProjectCode} for organization {OrganizationId}", 
+            request.Code, request.OrganizationId);
+
         // Check if code already exists
         var existingProject = await _projectRepository.GetByCodeAsync(request.Code, cancellationToken);
         if (existingProject != null)
         {
+            _logger.LogWarning("Project creation failed: Code {ProjectCode} already exists", request.Code);
             return Result<ProjectDto>.Failure($"Project with code '{request.Code}' already exists");
         }
 
@@ -72,6 +82,9 @@ public class CreateProjectCommandHandler : IRequestHandler<CreateProjectCommand,
 
         await _projectRepository.AddAsync(project, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Project created successfully: {ProjectId} - {ProjectName} ({ProjectCode})",
+            project.Id, project.Name, project.Code);
 
         var dto = new ProjectDto
         {

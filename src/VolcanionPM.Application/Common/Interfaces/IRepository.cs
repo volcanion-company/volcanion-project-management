@@ -15,6 +15,11 @@ public interface IRepository<T> where T : BaseEntity
     Task<bool> AnyAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default);
     Task<int> CountAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default);
     
+    /// <summary>
+    /// Gets an IQueryable for advanced filtering and pagination
+    /// </summary>
+    IQueryable<T> GetQueryable();
+    
     Task AddAsync(T entity, CancellationToken cancellationToken = default);
     Task AddRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
     

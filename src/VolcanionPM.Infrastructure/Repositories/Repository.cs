@@ -50,6 +50,11 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
         return await _dbSet.CountAsync(predicate, cancellationToken);
     }
 
+    public virtual IQueryable<T> GetQueryable()
+    {
+        return _dbSet.AsQueryable();
+    }
+
     public virtual async Task AddAsync(T entity, CancellationToken cancellationToken = default)
     {
         await _dbSet.AddAsync(entity, cancellationToken);

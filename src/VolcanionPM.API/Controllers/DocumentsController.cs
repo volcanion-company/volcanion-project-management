@@ -30,11 +30,31 @@ public class DocumentsController : ControllerBase
         return result.IsSuccess ? Ok(result.Data) : NotFound(result.Error);
     }
 
+    /// <summary>
+    /// Get documents by project with pagination, filtering, and sorting
+    /// </summary>
     [HttpGet("project/{projectId}")]
-    public async Task<IActionResult> GetByProject(Guid projectId)
+    public async Task<IActionResult> GetByProject(
+        Guid projectId,
+        [FromQuery] string? type,
+        [FromQuery] string? searchTerm,
+        [FromQuery] string? sortBy,
+        [FromQuery] string? sortOrder,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
     {
-        var query = new GetDocumentsByProjectQuery(projectId);
-        var result = await _mediator.Send(query);
+        var query = new GetDocumentsByProjectQuery
+        {
+            ProjectId = projectId,
+            Type = type,
+            SearchTerm = searchTerm,
+            SortBy = sortBy ?? "createdat",
+            SortOrder = sortOrder ?? "desc",
+            Page = page,
+            PageSize = pageSize
+        };
+        var result = await _mediator.Send(query, cancellationToken);
 
         return result.IsSuccess ? Ok(result.Data) : NotFound(result.Error);
     }

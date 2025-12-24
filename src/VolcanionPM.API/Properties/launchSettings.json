@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "VolcanionPM.API": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:54203;http://localhost:54204"
+    }
+  }
+}

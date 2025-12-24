@@ -38,8 +38,8 @@ public class ApplicationDbContext : DbContext
         // Apply all entity configurations from current assembly
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
-        // Configure schema
-        modelBuilder.HasDefaultSchema("volcanion_pm");
+        // Configure schema - use public schema to match init-db.sql
+        modelBuilder.HasDefaultSchema("public");
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

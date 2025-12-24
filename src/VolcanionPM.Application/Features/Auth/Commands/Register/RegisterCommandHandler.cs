@@ -66,8 +66,14 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
         await _userRepository.AddAsync(user, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        // Generate tokens
         var accessToken = _tokenService.GenerateAccessToken(user);
         var refreshToken = _tokenService.GenerateRefreshToken();
+        var refreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+
+        // Update user with refresh token
+        user.UpdateRefreshToken(refreshToken, refreshTokenExpiry, "System");
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var response = new AuthResponseDto
         {

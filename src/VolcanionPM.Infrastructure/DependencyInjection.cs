@@ -17,15 +17,18 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // Configure Npgsql to use UTC timestamps
+        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+        
         // Database Contexts
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(
-                configuration.GetConnectionString("DefaultConnection") ?? "Host=localhost;Database=volcanion_pm;Username=postgres;Password=postgres",
+                configuration.GetConnectionString("WriteDatabase") ?? "Host=localhost;Database=volcanionpm;Username=postgres;Password=postgres",
                 b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
 
         services.AddDbContext<ReadDbContext>(options =>
             options.UseNpgsql(
-                configuration.GetConnectionString("DefaultConnection") ?? "Host=localhost;Database=volcanion_pm;Username=postgres;Password=postgres",
+                configuration.GetConnectionString("ReadDatabase") ?? "Host=localhost;Database=volcanionpm;Username=postgres;Password=postgres",
                 b => b.EnableRetryOnFailure())
             .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
 
@@ -82,6 +85,9 @@ public static class DependencyInjection
         
         // Password Hasher
         services.AddScoped<IPasswordHasher, PasswordHasher>();
+
+        // Email Service
+        services.AddScoped<IEmailService, GmailEmailService>();
 
         return services;
     }

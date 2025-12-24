@@ -20,6 +20,7 @@ public class ProjectRepository : Repository<Project>, IProjectRepository
     public async Task<IEnumerable<Project>> GetByOrganizationIdAsync(Guid organizationId, CancellationToken cancellationToken = default)
     {
         return await _dbSet
+            .Include(p => p.ProjectManager)
             .Where(p => EF.Property<Guid>(p, "OrganizationId") == organizationId)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync(cancellationToken);
@@ -28,6 +29,9 @@ public class ProjectRepository : Repository<Project>, IProjectRepository
     public async Task<Project?> GetProjectWithDetailsAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _dbSet
+            .Include(p => p.Organization)
+            .Include(p => p.ProjectManager)
+            .AsSplitQuery()  // Prevents cartesian explosion
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
     }
 }

@@ -31,16 +31,37 @@ public class TimeEntriesController : ControllerBase
         return result.IsSuccess ? Ok(result.Data) : NotFound(result.Error);
     }
 
+    /// <summary>
+    /// Get time entries by user with pagination, filtering, and sorting
+    /// </summary>
     [HttpGet("user/{userId}")]
-    public async Task<IActionResult> GetByUser(Guid userId, [FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate)
+    public async Task<IActionResult> GetByUser(
+        Guid userId,
+        [FromQuery] Guid? taskId,
+        [FromQuery] DateTime? startDate,
+        [FromQuery] DateTime? endDate,
+        [FromQuery] string? type,
+        [FromQuery] bool? isBillable,
+        [FromQuery] string? sortBy,
+        [FromQuery] string? sortOrder,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
     {
         var query = new GetTimeEntriesByUserQuery
         {
             UserId = userId,
+            TaskId = taskId,
             StartDate = startDate,
-            EndDate = endDate
+            EndDate = endDate,
+            Type = type,
+            IsBillable = isBillable,
+            SortBy = sortBy ?? "date",
+            SortOrder = sortOrder ?? "desc",
+            Page = page,
+            PageSize = pageSize
         };
-        var result = await _mediator.Send(query);
+        var result = await _mediator.Send(query, cancellationToken);
 
         return result.IsSuccess ? Ok(result.Data) : BadRequest(result.Error);
     }

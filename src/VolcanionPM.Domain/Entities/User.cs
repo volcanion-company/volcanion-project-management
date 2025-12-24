@@ -20,6 +20,14 @@ public class User : AggregateRoot
     public DateTime? LastLoginAt { get; private set; }
     public string? RefreshToken { get; private set; }
     public DateTime? RefreshTokenExpiryDate { get; private set; }
+    public string? PasswordResetToken { get; private set; }
+    public DateTime? PasswordResetTokenExpiryDate { get; private set; }
+    
+    // Account lockout properties
+    public int FailedLoginAttempts { get; private set; } = 0;
+    public DateTime? LastFailedLoginAt { get; private set; }
+    public DateTime? LockoutEndDate { get; private set; }
+    public bool IsLockedOut => LockoutEndDate.HasValue && LockoutEndDate.Value > DateTime.UtcNow;
     
     // Organization relationship
     public Guid OrganizationId { get; private set; }
@@ -143,6 +151,46 @@ public class User : AggregateRoot
     {
         LastLoginAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
+        
+        // Reset failed login attempts on successful login
+        FailedLoginAttempts = 0;
+        LastFailedLoginAt = null;
+        LockoutEndDate = null;
+    }
+
+    public void RecordFailedLogin(int maxAttempts, int lockoutDurationMinutes)
+    {
+        FailedLoginAttempts++;
+        LastFailedLoginAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+
+        // Lock account if max attempts exceeded
+        if (FailedLoginAttempts >= maxAttempts)
+        {
+            LockoutEndDate = DateTime.UtcNow.AddMinutes(lockoutDurationMinutes);
+            AddDomainEvent(new UserLockedOutEvent(Id, Email.Value, LockoutEndDate.Value));
+        }
+    }
+
+    public void ResetFailedLoginAttempts(string updatedBy)
+    {
+        if (FailedLoginAttempts > 0 || LockoutEndDate.HasValue)
+        {
+            FailedLoginAttempts = 0;
+            LastFailedLoginAt = null;
+            LockoutEndDate = null;
+            UpdatedBy = updatedBy;
+            UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public void UnlockAccount(string updatedBy)
+    {
+        LockoutEndDate = null;
+        FailedLoginAttempts = 0;
+        LastFailedLoginAt = null;
+        UpdatedBy = updatedBy;
+        UpdatedAt = DateTime.UtcNow;
     }
 
     public void ChangeRole(UserRole newRole, string updatedBy)
@@ -172,6 +220,36 @@ public class User : AggregateRoot
         UpdatedBy = activatedBy;
         UpdatedAt = DateTime.UtcNow;
     }
+
+    public void SetPasswordResetToken(string resetToken, DateTime expiryDate, string updatedBy)
+    {
+        PasswordResetToken = resetToken;
+        PasswordResetTokenExpiryDate = expiryDate;
+        UpdatedBy = updatedBy;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ClearPasswordResetToken(string updatedBy)
+    {
+        PasswordResetToken = null;
+        PasswordResetTokenExpiryDate = null;
+        UpdatedBy = updatedBy;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public bool IsPasswordResetTokenValid(string token)
+    {
+        if (string.IsNullOrEmpty(PasswordResetToken) || !PasswordResetTokenExpiryDate.HasValue)
+            return false;
+
+        if (PasswordResetToken != token)
+            return false;
+
+        if (PasswordResetTokenExpiryDate.Value < DateTime.UtcNow)
+            return false;
+
+        return true;
+    }
 }
 
 // Domain Events
@@ -188,6 +266,12 @@ public record UserPasswordChangedEvent(Guid UserId, string Email) : IDomainEvent
 }
 
 public record UserRoleChangedEvent(Guid UserId, UserRole OldRole, UserRole NewRole) : IDomainEvent
+{
+    public Guid EventId { get; } = Guid.NewGuid();
+    public DateTime OccurredOn { get; } = DateTime.UtcNow;
+}
+
+public record UserLockedOutEvent(Guid UserId, string Email, DateTime LockoutEndDate) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
     public DateTime OccurredOn { get; } = DateTime.UtcNow;

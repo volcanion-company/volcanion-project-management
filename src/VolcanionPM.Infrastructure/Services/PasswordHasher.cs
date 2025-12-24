@@ -1,4 +1,5 @@
 using VolcanionPM.Application.Common.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace VolcanionPM.Infrastructure.Services;
 
@@ -7,7 +8,7 @@ namespace VolcanionPM.Infrastructure.Services;
 /// </summary>
 public class PasswordHasher : IPasswordHasher
 {
-    private const int WorkFactor = 12; // BCrypt work factor (higher = more secure but slower)
+    private const int WorkFactor = 12;
 
     public string HashPassword(string password)
     {
@@ -20,13 +21,18 @@ public class PasswordHasher : IPasswordHasher
     public bool VerifyPassword(string password, string hash)
     {
         if (string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(hash))
+        {
             return false;
+        }
 
         try
         {
-            return BCrypt.Net.BCrypt.Verify(password, hash);
+            // Try both Verify methods
+            var enhancedResult = BCrypt.Net.BCrypt.EnhancedVerify(password, hash);
+            var normalResult = BCrypt.Net.BCrypt.Verify(password, hash);
+            return enhancedResult || normalResult;
         }
-        catch
+        catch (Exception ex)
         {
             return false;
         }

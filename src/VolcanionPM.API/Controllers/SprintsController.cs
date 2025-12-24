@@ -23,11 +23,31 @@ public class SprintsController : ControllerBase
         _mediator = mediator;
     }
 
+    /// <summary>
+    /// Get sprints by project with pagination, filtering, and sorting
+    /// </summary>
     [HttpGet("project/{projectId}")]
-    public async Task<IActionResult> GetByProject(Guid projectId)
+    public async Task<IActionResult> GetByProject(
+        Guid projectId,
+        [FromQuery] string? status,
+        [FromQuery] string? searchTerm,
+        [FromQuery] string? sortBy,
+        [FromQuery] string? sortOrder,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
     {
-        var query = new GetSprintsByProjectQuery(projectId);
-        var result = await _mediator.Send(query);
+        var query = new GetSprintsByProjectQuery
+        {
+            ProjectId = projectId,
+            Status = status,
+            SearchTerm = searchTerm,
+            SortBy = sortBy ?? "sprintnumber",
+            SortOrder = sortOrder ?? "desc",
+            Page = page,
+            PageSize = pageSize
+        };
+        var result = await _mediator.Send(query, cancellationToken);
 
         return result.IsSuccess ? Ok(result.Data) : NotFound(result.Error);
     }

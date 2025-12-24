@@ -6,21 +6,31 @@ using VolcanionPM.Application.Features.Tasks.Commands.Update;
 using VolcanionPM.Application.Features.Tasks.Queries.GetById;
 using VolcanionPM.Application.Features.Tasks.Queries.GetTasksByProject;
 using VolcanionPM.Application.DTOs.Tasks;
+using VolcanionPM.Application.Common.Interfaces;
 
 namespace VolcanionPM.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
+[Authorize]
 public class TasksController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<TasksController> _logger;
+    private readonly IAuthorizationService _authorizationService;
+    private readonly ITaskRepository _taskRepository;
 
-    public TasksController(IMediator mediator, ILogger<TasksController> logger)
+    public TasksController(
+        IMediator mediator, 
+        ILogger<TasksController> logger,
+        IAuthorizationService authorizationService,
+        ITaskRepository taskRepository)
     {
         _mediator = mediator;
         _logger = logger;
+        _authorizationService = authorizationService;
+        _taskRepository = taskRepository;
     }
 
     /// <summary>
@@ -99,11 +109,30 @@ public class TasksController : ControllerBase
     [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTaskCommand command, CancellationToken cancellationToken)
     {
         if (id != command.Id)
         {
             return BadRequest(new { error = "ID mismatch" });
+        }
+
+        // Get task for authorization check
+        var task = await _taskRepository.GetByIdAsync(id, cancellationToken);
+        if (task == null)
+        {
+            return NotFound(new { error = "Task not found" });
+        }
+
+        // If AssignedToId is being changed, check CanAssignTask policy
+        if (command.AssignedToId.HasValue && task.AssignedToId != command.AssignedToId.Value)
+        {
+            var authorizationResult = await _authorizationService.AuthorizeAsync(User, task, "CanAssignTask");
+            if (!authorizationResult.Succeeded)
+            {
+                _logger.LogWarning("User {UserId} denied permission to assign task {TaskId}", User.Identity?.Name, id);
+                return Forbid();
+            }
         }
 
         var result = await _mediator.Send(command, cancellationToken);

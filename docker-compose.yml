@@ -1,0 +1,114 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: volcanionpm-postgres
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DATABASE}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - volcanionpm-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: volcanionpm-redis
+    env_file:
+      - .env
+    command: >
+      sh -c "if [ -n \"${REDIS_PASSWORD}\" ]; then
+        redis-server --requirepass ${REDIS_PASSWORD};
+      else
+        redis-server;
+      fi"
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: >
+        sh -c "if [ -n \"${REDIS_PASSWORD}\" ]; then
+          redis-cli -a ${REDIS_PASSWORD} ping;
+        else
+          redis-cli ping;
+        fi"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - volcanionpm-network
+
+  api:
+    build:
+      context: .
+      dockerfile: src/VolcanionPM.API/Dockerfile
+    container_name: volcanionpm-api
+    env_file:
+      - .env
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_HTTP_PORTS: ${ASPNETCORE_HTTP_PORTS:-8080}
+      ASPNETCORE_URLS: ${ASPNETCORE_URLS:-http://+:8080}
+      ConnectionStrings__WriteDatabase: "Host=${POSTGRES_HOST};Port=${POSTGRES_PORT};Database=${POSTGRES_DATABASE};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      ConnectionStrings__ReadDatabase: "Host=${POSTGRES_HOST};Port=${POSTGRES_PORT};Database=${POSTGRES_DATABASE};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      Redis__Configuration: "${REDIS_HOST}:${REDIS_PORT}${REDIS_PASSWORD:+,password=${REDIS_PASSWORD}}"
+      Redis__InstanceName: "VolcanionPM:"
+      Jwt__SecretKey: ${JWT_SECRET_KEY}
+      Jwt__Issuer: ${JWT_ISSUER:-VolcanionProjectManagement}
+      Jwt__Audience: ${JWT_AUDIENCE:-VolcanionProjectManagement}
+      Jwt__AccessTokenExpirationMinutes: ${JWT_EXPIRY_MINUTES:-60}
+      Jwt__RefreshTokenExpirationDays: ${JWT_REFRESH_EXPIRY_DAYS:-7}
+      Email__FromEmail: ${EMAIL_FROM_ADDRESS:-noreply@volcanion.com}
+      Email__FromName: ${EMAIL_FROM_NAME:-Volcanion Project Management}
+      Email__SmtpHost: "smtp.gmail.com"
+      Email__SmtpPort: "587"
+      Email__SmtpUsername: ${EMAIL_USERNAME}
+      Email__SmtpPassword: ${EMAIL_PASSWORD}
+      Security__Cors__AllowedOrigins__0: "http://localhost:3000"
+      Security__Cors__AllowedOrigins__1: "http://localhost:4200"
+      Security__Cors__AllowedOrigins__2: "http://localhost:5173"
+      Security__Cors__AllowCredentials: "true"
+      Security__AccountLockout__MaxFailedAttempts: ${LOCKOUT_MAX_ATTEMPTS:-5}
+      Security__AccountLockout__LockoutDurationMinutes: ${LOCKOUT_DURATION_MINUTES:-15}
+      Logging__LogLevel__Default: ${LOGGING_LOGLEVEL_DEFAULT:-Information}
+      Logging__LogLevel__Microsoft: ${LOGGING_LOGLEVEL_MICROSOFT:-Warning}
+      Logging__LogLevel__Microsoft.Hosting.Lifetime: ${LOGGING_LOGLEVEL_MICROSOFT_HOSTING_LIFETIME:-Information}
+    ports:
+      - "${ASPNETCORE_HTTP_PORTS:-8080}:${ASPNETCORE_HTTP_PORTS:-8080}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${ASPNETCORE_HTTP_PORTS:-8080}/health/live"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - volcanionpm-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  volcanionpm-network:
+    driver: bridge

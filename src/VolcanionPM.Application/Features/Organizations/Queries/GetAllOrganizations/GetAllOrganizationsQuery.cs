@@ -4,7 +4,10 @@ using VolcanionPM.Application.Features.Organizations.DTOs;
 
 namespace VolcanionPM.Application.Features.Organizations.Queries.GetAllOrganizations;
 
-public record GetAllOrganizationsQuery : IRequest<Result<List<OrganizationDto>>>
+public class GetAllOrganizationsQuery : PagedQuery, IRequest<Result<PagedResult<OrganizationDto>>>
 {
-    public bool? IsActive { get; init; }
+    public bool? IsActive { get; set; }
+    public string? SearchTerm { get; set; }
+    public string SortBy { get; set; } = "name";
+    public string SortOrder { get; set; } = "asc";
 }

@@ -18,6 +18,7 @@ public class TimeEntryRepository : Repository<TimeEntry>, ITimeEntryRepository
             .Include(te => te.Task)
             .Where(te => te.UserId == userId)
             .OrderByDescending(te => te.Date)
+            .AsSplitQuery()
             .ToListAsync(cancellationToken);
     }
 
@@ -28,6 +29,7 @@ public class TimeEntryRepository : Repository<TimeEntry>, ITimeEntryRepository
             .Include(te => te.Task)
             .Where(te => te.TaskId == taskId)
             .OrderByDescending(te => te.Date)
+            .AsSplitQuery()
             .ToListAsync(cancellationToken);
     }
 
@@ -38,6 +40,7 @@ public class TimeEntryRepository : Repository<TimeEntry>, ITimeEntryRepository
             .Include(te => te.Task)
             .Where(te => te.Task.ProjectId == projectId)
             .OrderByDescending(te => te.Date)
+            .AsSplitQuery()
             .ToListAsync(cancellationToken);
     }
 
@@ -48,6 +51,7 @@ public class TimeEntryRepository : Repository<TimeEntry>, ITimeEntryRepository
             .Include(te => te.Task)
             .Where(te => te.UserId == userId && te.Date >= startDate && te.Date <= endDate)
             .OrderByDescending(te => te.Date)
+            .AsSplitQuery()
             .ToListAsync(cancellationToken);
     }
 

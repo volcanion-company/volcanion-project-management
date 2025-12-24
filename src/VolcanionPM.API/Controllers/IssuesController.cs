@@ -32,11 +32,33 @@ public class IssuesController : ControllerBase
         return result.IsSuccess ? Ok(result.Data) : NotFound(result.Error);
     }
 
+    /// <summary>
+    /// Get issues by project with pagination, filtering, and sorting
+    /// </summary>
     [HttpGet("project/{projectId}")]
-    public async Task<IActionResult> GetByProject(Guid projectId)
+    public async Task<IActionResult> GetByProject(
+        Guid projectId,
+        [FromQuery] string? status,
+        [FromQuery] string? severity,
+        [FromQuery] string? searchTerm,
+        [FromQuery] string? sortBy,
+        [FromQuery] string? sortOrder,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
     {
-        var query = new GetIssuesByProjectQuery(projectId);
-        var result = await _mediator.Send(query);
+        var query = new GetIssuesByProjectQuery
+        {
+            ProjectId = projectId,
+            Status = status,
+            Severity = severity,
+            SearchTerm = searchTerm,
+            SortBy = sortBy ?? "createdat",
+            SortOrder = sortOrder ?? "desc",
+            Page = page,
+            PageSize = pageSize
+        };
+        var result = await _mediator.Send(query, cancellationToken);
 
         return result.IsSuccess ? Ok(result.Data) : NotFound(result.Error);
     }
